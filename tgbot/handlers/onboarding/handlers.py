@@ -18,7 +18,7 @@ user_gateway = DjangoOnboardingUserGateway()
 
 def command_start(update: Update, context: CallbackContext) -> None:
     screen = build_start_screen(user_gateway=user_gateway, update=update, context=context)
-    update.message.reply_text(text=screen.text, reply_markup=render_start_menu(screen))
+    update.message.reply_text(text=screen.text, reply_markup=render_start_menu(screen), parse_mode=ParseMode.HTML)
 
 
 def start_menu_action(update: Update, context: CallbackContext) -> None:

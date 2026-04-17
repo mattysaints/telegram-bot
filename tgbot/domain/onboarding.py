@@ -1,11 +1,12 @@
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 @dataclass(frozen=True)
 class MenuAction:
     key: str
     label: str
+    url: Optional[str] = None
 
 
 @dataclass(frozen=True)
