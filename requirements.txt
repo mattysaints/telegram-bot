@@ -25,7 +25,7 @@ django-celery-beat==2.3.0
 
 # Telegram
 python-telegram-bot==13.15  # last sync version
-APScheduler>=3.9  # override per compatibilità Python 3.12
+APScheduler==3.6.3  # pinned to match python-telegram-bot 13.15 requirement
 urllib3<2  # richiesto da python-telegram-bot 13.x
 
 # monitoring
