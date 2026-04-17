@@ -1,6 +1,8 @@
 """
     Telegram event handlers
 """
+import logging
+
 from telegram.ext import (
     Dispatcher, Filters,
     CommandHandler, MessageHandler,
@@ -18,12 +20,21 @@ from tgbot.handlers.location import handlers as location_handlers
 from tgbot.handlers.onboarding import handlers as onboarding_handlers
 from tgbot.handlers.broadcast_message import handlers as broadcast_handlers
 from tgbot.main import bot
+from tgbot.system_commands import set_up_commands
+
+
+logger = logging.getLogger(__name__)
 
 
 def setup_dispatcher(dp):
     """
     Adding handlers for events from Telegram
     """
+    try:
+        set_up_commands(bot)
+    except Exception:
+        logger.exception("Failed to set Telegram commands on startup")
+
     # onboarding
     dp.add_handler(CommandHandler("start", onboarding_handlers.command_start))
     dp.add_handler(CallbackQueryHandler(onboarding_handlers.start_menu_action, pattern=START_MENU_PATTERN))

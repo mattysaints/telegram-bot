@@ -2,8 +2,6 @@ from typing import Dict
 
 from telegram import Bot, BotCommand
 
-from tgbot.main import bot
-
 
 def set_up_commands(bot_instance: Bot) -> None:
 
@@ -51,5 +49,3 @@ def set_up_commands(bot_instance: Bot) -> None:
             ]
         )
 
-
-set_up_commands(bot)
