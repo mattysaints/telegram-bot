@@ -2,15 +2,15 @@ import logging
 import traceback
 import html
 
-import telegram
 from telegram import Update
-from telegram.ext import CallbackContext
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
 from dtb.settings import TELEGRAM_LOGS_CHAT_ID
 from users.models import User
 
 
-def send_stacktrace_to_tg_chat(update: Update, context: CallbackContext) -> None:
+async def send_stacktrace_to_tg_chat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     u = User.get_user(update, context)
 
     logging.error("Exception while handling an update:", exc_info=context.error)
@@ -31,17 +31,17 @@ It is because we are constantly improving our service but sometimes we might for
 We already received all the details to fix the issue.
 Return to /start
 """
-    context.bot.send_message(
+    await context.bot.send_message(
         chat_id=u.user_id,
         text=user_message,
     )
 
     admin_message = f"⚠️⚠️⚠️ for {u.tg_str}:\n{message}"[:4090]
     if TELEGRAM_LOGS_CHAT_ID:
-        context.bot.send_message(
+        await context.bot.send_message(
             chat_id=TELEGRAM_LOGS_CHAT_ID,
             text=admin_message,
-            parse_mode=telegram.ParseMode.HTML,
+            parse_mode=ParseMode.HTML,
         )
     else:
         logging.error(admin_message)

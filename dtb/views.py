@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from django.views import View
@@ -5,17 +6,19 @@ from django.http import JsonResponse
 from telegram import Update
 
 from dtb.celery import app
-from dtb.settings import DEBUG
-from tgbot.dispatcher import dispatcher
-from tgbot.main import bot
+from dtb.settings import DEBUG, TELEGRAM_TOKEN
+from tgbot.dispatcher import build_application
 
 logger = logging.getLogger(__name__)
+
+# Build the Application once at module level (holds bot + handlers)
+_application = build_application(TELEGRAM_TOKEN)
 
 
 @app.task(ignore_result=True)
 def process_telegram_event(update_json):
-    update = Update.de_json(update_json, bot)
-    dispatcher.process_update(update)
+    update = Update.de_json(update_json, _application.bot)
+    asyncio.run(_application.process_update(update))
 
 
 def index(request):
