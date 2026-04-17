@@ -5,7 +5,7 @@ from typing import Union, Optional, Tuple
 from django.db import models
 from django.db.models import QuerySet, Manager
 from telegram import Update
-from telegram.ext import CallbackContext
+from telegram.ext import ContextTypes
 
 from tgbot.handlers.utils.info import extract_user_data_from_update
 from utils.models import CreateUpdateTracker, nb, CreateTracker, GetOrNoneManager
@@ -35,7 +35,7 @@ class User(CreateUpdateTracker):
         return f'@{self.username}' if self.username is not None else f'{self.user_id}'
 
     @classmethod
-    def get_user_and_created(cls, update: Update, context: CallbackContext) -> Tuple[User, bool]:
+    def get_user_and_created(cls, update: Update, context: ContextTypes.DEFAULT_TYPE) -> Tuple[User, bool]:
         """ python-telegram-bot's Update, Context --> User instance """
         data = extract_user_data_from_update(update)
         u, created = cls.objects.update_or_create(user_id=data["user_id"], defaults=data)
@@ -51,7 +51,7 @@ class User(CreateUpdateTracker):
         return u, created
 
     @classmethod
-    def get_user(cls, update: Update, context: CallbackContext) -> User:
+    def get_user(cls, update: Update, context: ContextTypes.DEFAULT_TYPE) -> User:
         u, _ = cls.get_user_and_created(update, context)
         return u
 

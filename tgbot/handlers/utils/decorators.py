@@ -1,8 +1,9 @@
 from functools import wraps
 from typing import Callable
 
-from telegram import Update, ChatAction
-from telegram.ext import CallbackContext
+from telegram import Update
+from telegram.constants import ChatAction
+from telegram.ext import ContextTypes
 
 from users.models import User
 
@@ -14,13 +15,13 @@ def admin_only(func: Callable):
     """
 
     @wraps(func)
-    def wrapper(update: Update, context: CallbackContext, *args, **kwargs):
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
         user = User.get_user(update, context)
 
         if not user.is_admin:
             return
 
-        return func(update, context, *args, **kwargs)
+        return await func(update, context, *args, **kwargs)
 
     return wrapper
 
@@ -29,8 +30,8 @@ def send_typing_action(func: Callable):
     """Sends typing action while processing func command."""
 
     @wraps(func)
-    def command_func(update: Update, context: CallbackContext, *args, **kwargs):
-        update.effective_chat.send_chat_action(ChatAction.TYPING)
-        return func(update, context, *args, **kwargs)
+    async def command_func(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        await update.effective_chat.send_action(ChatAction.TYPING)
+        return await func(update, context, *args, **kwargs)
 
     return command_func
