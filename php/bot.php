@@ -1686,17 +1686,36 @@ VPN per navigare su Internet dal proprio smartphone e tablet, senza consumare i 
 
 <b>Test IPTV KeTv</b>
 Puoi generare al massimo 1 test IPTV al mese. Ogni test IPTV dura 1 ora.
+Se il test è occupato da un altro utente, verrai messo in coda e riceverai la tua linea automaticamente appena si libera.
 
  <b>Utente</b>: $userplustext
  <b>Crediti disponibili</b>: " . credits($userID), $menu, true);
     } elseif ($msg == "generatestiptvKeTv") {
         if ($test_iptv < 1 || $userID == 148959990) {
-            $test_iptv++;
-            $database->query("UPDATE $table SET test_iptv = $test_iptv WHERE userID = $userID");
             $r = new HttpRequest("get", "http://45.86.190.74:81/api/bcc30fb1-3cc1-4cb8-a51a-f91b55f03089/create_test/1");
             $rr = $r->getResponse();
             $ar = json_decode($rr, true);
-            sm($userID, "<b>Test IPTV KeTv</b>\n\nEcco la tua linea di test KeTv: " . link_lista($ar["username"], $ar["password"]));
+            if (is_array($ar) && !empty($ar["username"]) && !empty($ar["password"])) {
+                // Il quota mensile viene consumato solo se il test è stato davvero generato
+                $test_iptv++;
+                $database->query("UPDATE $table SET test_iptv = $test_iptv WHERE userID = $userID");
+                sm($userID, "<b>Test IPTV KeTv</b>\n\nEcco la tua linea di test KeTv: " . link_lista($ar["username"], $ar["password"]));
+            } else {
+                // Test occupato: metti l'utente in coda, verrà servito da test_queue_cron.php
+                $database->query("CREATE TABLE IF NOT EXISTS {$table}_test_queue (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    userID BIGINT NOT NULL UNIQUE,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )");
+                $stmt = $database->prepare("INSERT IGNORE INTO {$table}_test_queue (userID) VALUES (?)");
+                $stmt->bind_param('i', $userID);
+                $stmt->execute();
+                if ($stmt->affected_rows > 0) {
+                    sm($userID, "⏳ <b>Test IPTV occupato</b>\n\nIn questo momento il test IPTV è occupato da un altro utente.\n\nSei stato aggiunto alla <b>coda</b>: riceverai la tua linea di test <b>automaticamente</b> appena si libera un posto, senza dover fare altro.");
+                } else {
+                    acq($id, "Sei già in coda: riceverai il test appena si libera.", true);
+                }
+            }
         } else {
             acq($id, "Hai già usufruito di 1 test IPTV questo mese.", true);
         }
