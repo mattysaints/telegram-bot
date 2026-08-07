@@ -1,6 +1,7 @@
 <?php
-// Processa la coda dei test IPTV: appena il test si libera, genera la linea
-// e la invia automaticamente al primo utente in coda.
+// Processa la coda dei test IPTV: appena il test si libera (l'ora del
+// cliente precedente è scaduta), genera la linea e la invia
+// automaticamente al primo utente in coda.
 //
 // Da eseguire via cron ogni 5 minuti (il test dura 1 ora):
 //   */5 * * * * php /percorso/php/test_queue_cron.php
@@ -17,6 +18,18 @@ $database->query("CREATE TABLE IF NOT EXISTS {$table}_test_queue (
     userID BIGINT NOT NULL UNIQUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 )");
+$database->query("CREATE TABLE IF NOT EXISTS {$table}_test_state (
+    id TINYINT NOT NULL PRIMARY KEY,
+    holder_userID BIGINT NULL,
+    started_at DATETIME NULL
+)");
+$database->query("INSERT IGNORE INTO {$table}_test_state (id) VALUES (1)");
+
+// Check: il test è ancora preso da un cliente?
+$stato = $database->query("SELECT holder_userID, started_at FROM {$table}_test_state WHERE id = 1")->fetch_assoc();
+if ($stato && $stato['started_at'] !== null && time() < strtotime($stato['started_at']) + 3600) {
+    exit; // occupato, riprova al prossimo giro
+}
 
 while (true) {
     $result = $database->query("SELECT q.userID, u.test_iptv
@@ -39,11 +52,17 @@ while (true) {
     $rr = $r->getResponse();
     $ar = json_decode($rr, true);
     if (!is_array($ar) || empty($ar['username']) || empty($ar['password'])) {
-        // Test ancora occupato: riprova al prossimo giro di cron
+        // Il pannello ha rifiutato: riprova al prossimo giro di cron
         break;
     }
 
+    $stmt = $database->prepare("UPDATE {$table}_test_state SET holder_userID = ?, started_at = NOW() WHERE id = 1");
+    $stmt->bind_param('i', $queuedUserID);
+    $stmt->execute();
     $database->query("UPDATE $table SET test_iptv = test_iptv + 1 WHERE userID = $queuedUserID");
     $database->query("DELETE FROM {$table}_test_queue WHERE userID = $queuedUserID");
     sm($queuedUserID, "✅ <b>Test IPTV disponibile!</b>\n\nIl test si è liberato: ecco la tua linea di test KeTv: " . link_lista($ar['username'], $ar['password']) . "\n\n<i>Ricorda: il test dura 1 ora.</i>");
+
+    // La linea è una sola: dopo averla assegnata torna occupata per 1 ora
+    break;
 }
