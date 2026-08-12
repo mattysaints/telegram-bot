@@ -4,12 +4,12 @@
 import logging
 
 from telegram.ext import (
-    Dispatcher, Filters,
+    Application,
+    filters,
     CommandHandler, MessageHandler,
     CallbackQueryHandler,
 )
 
-from dtb.settings import DEBUG
 from tgbot.handlers.broadcast_message.manage_data import CONFIRM_DECLINE_BROADCAST
 from tgbot.handlers.broadcast_message.static_text import broadcast_command
 from tgbot.handlers.onboarding.manage_data import START_MENU_PATTERN
@@ -19,65 +19,48 @@ from tgbot.handlers.admin import handlers as admin_handlers
 from tgbot.handlers.location import handlers as location_handlers
 from tgbot.handlers.onboarding import handlers as onboarding_handlers
 from tgbot.handlers.broadcast_message import handlers as broadcast_handlers
-from tgbot.main import bot
-from tgbot.system_commands import set_up_commands
 
 
 logger = logging.getLogger(__name__)
 
 
-def setup_dispatcher(dp):
+def setup_dispatcher(app: Application) -> Application:
     """
     Adding handlers for events from Telegram
     """
-    try:
-        set_up_commands(bot)
-    except Exception:
-        logger.exception("Failed to set Telegram commands on startup")
-
     # onboarding
-    dp.add_handler(CommandHandler("start", onboarding_handlers.command_start))
-    dp.add_handler(CallbackQueryHandler(onboarding_handlers.start_menu_action, pattern=START_MENU_PATTERN))
+    app.add_handler(CommandHandler("start", onboarding_handlers.command_start))
+    app.add_handler(CallbackQueryHandler(onboarding_handlers.start_menu_action, pattern=START_MENU_PATTERN))
 
     # admin commands
-    dp.add_handler(CommandHandler("admin", admin_handlers.admin))
-    dp.add_handler(CommandHandler("stats", admin_handlers.stats))
-    dp.add_handler(CommandHandler('export_users', admin_handlers.export_users))
+    app.add_handler(CommandHandler("admin", admin_handlers.admin))
+    app.add_handler(CommandHandler("stats", admin_handlers.stats))
+    app.add_handler(CommandHandler('export_users', admin_handlers.export_users))
 
     # location
-    dp.add_handler(CommandHandler("ask_location", location_handlers.ask_for_location))
-    dp.add_handler(MessageHandler(Filters.location, location_handlers.location_handler))
+    app.add_handler(CommandHandler("ask_location", location_handlers.ask_for_location))
+    app.add_handler(MessageHandler(filters.LOCATION, location_handlers.location_handler))
 
     # broadcast message
-    dp.add_handler(
-        MessageHandler(Filters.regex(rf'^{broadcast_command}(/s)?.*'), broadcast_handlers.broadcast_command_with_message)
+    app.add_handler(
+        MessageHandler(filters.Regex(rf'^{broadcast_command}(/s)?.*'), broadcast_handlers.broadcast_command_with_message)
     )
-    dp.add_handler(
+    app.add_handler(
         CallbackQueryHandler(broadcast_handlers.broadcast_decision_handler, pattern=f"^{CONFIRM_DECLINE_BROADCAST}")
     )
 
     # files
-    dp.add_handler(MessageHandler(
-        Filters.animation, files.show_file_id,
+    app.add_handler(MessageHandler(
+        filters.ANIMATION, files.show_file_id,
     ))
 
     # handling errors
-    dp.add_error_handler(error.send_stacktrace_to_tg_chat)
+    app.add_error_handler(error.send_stacktrace_to_tg_chat)
 
-    # EXAMPLES FOR HANDLERS
-    # dp.add_handler(MessageHandler(Filters.text, <function_handler>))
-    # dp.add_handler(MessageHandler(
-    #     Filters.document, <function_handler>,
-    # ))
-    # dp.add_handler(CallbackQueryHandler(<function_handler>, pattern="^r\d+_\d+"))
-    # dp.add_handler(MessageHandler(
-    #     Filters.chat(chat_id=int(TELEGRAM_FILESTORAGE_ID)),
-    #     # & Filters.forwarded & (Filters.photo | Filters.video | Filters.animation),
-    #     <function_handler>,
-    # ))
-
-    return dp
+    return app
 
 
-n_workers = 0 if DEBUG else 4
-dispatcher = setup_dispatcher(Dispatcher(bot, update_queue=None, workers=n_workers, use_context=True))
+def build_application(tg_token: str) -> Application:
+    app = Application.builder().token(tg_token).build()
+    setup_dispatcher(app)
+    return app

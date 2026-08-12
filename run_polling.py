@@ -3,30 +3,27 @@ import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dtb.settings')
 django.setup()
 
-from telegram import Bot
-from telegram.ext import Updater
-
 from dtb.settings import TELEGRAM_TOKEN
-from tgbot.dispatcher import setup_dispatcher
+from tgbot.dispatcher import build_application
+from tgbot.system_commands import set_up_commands
 
 
 def run_polling(tg_token: str = TELEGRAM_TOKEN):
     """ Run bot in polling mode """
-    updater = Updater(tg_token, use_context=True)
+    app = build_application(tg_token)
 
-    dp = updater.dispatcher
-    dp = setup_dispatcher(dp)
+    # Set up bot commands
+    async def post_init(application):
+        try:
+            await set_up_commands(application.bot)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("Failed to set Telegram commands on startup")
 
-    bot_info = Bot(tg_token).get_me()
-    bot_link = f"https://t.me/{bot_info['username']}"
+    app.post_init = post_init
 
-    print(f"Polling of '{bot_link}' has started")
-    # it is really useful to send '👋' emoji to developer
-    # when you run local test
-    # bot.send_message(text='👋', chat_id=<YOUR TELEGRAM ID>)
-
-    updater.start_polling()
-    updater.idle()
+    print("Polling has started")
+    app.run_polling()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from telegram import Update
-from telegram.ext import CallbackContext
+from telegram.ext import ContextTypes
 
 from tgbot.application.onboarding.ports import OnboardingUserGateway
 from tgbot.domain.onboarding import MenuAction, StartScreen
@@ -26,7 +26,7 @@ def _build_start_menu_actions() -> List[MenuAction]:
 def build_start_screen(
     user_gateway: OnboardingUserGateway,
     update: Update,
-    context: CallbackContext,
+    context: ContextTypes.DEFAULT_TYPE,
 ) -> StartScreen:
     snapshot = user_gateway.get_user_snapshot(update, context)
     if snapshot.is_new:

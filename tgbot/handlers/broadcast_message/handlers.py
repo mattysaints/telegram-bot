@@ -1,8 +1,7 @@
-import re
-
 import telegram
 from telegram import Update
-from telegram.ext import CallbackContext
+from telegram.constants import ParseMode
+from telegram.ext import ContextTypes
 
 from dtb.settings import DEBUG
 from .manage_data import CONFIRM_DECLINE_BROADCAST, CONFIRM_BROADCAST
@@ -13,20 +12,20 @@ from users.models import User
 from users.tasks import broadcast_message
 
 
-def broadcast_command_with_message(update: Update, context: CallbackContext):
+async def broadcast_command_with_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ Type /broadcast <some_text>. Then check your message in HTML format and broadcast to users."""
     u = User.get_user(update, context)
 
     if not u.is_admin:
-        update.message.reply_text(
+        await update.message.reply_text(
             text=broadcast_no_access,
         )
     else:
         if update.message.text == broadcast_command:
             # user typed only command without text for the message.
-            update.message.reply_text(
+            await update.message.reply_text(
                 text=broadcast_wrong_format,
-                parse_mode=telegram.ParseMode.HTML,
+                parse_mode=ParseMode.HTML,
             )
             return
 
@@ -34,19 +33,19 @@ def broadcast_command_with_message(update: Update, context: CallbackContext):
         markup = keyboard_confirm_decline_broadcasting()
 
         try:
-            update.message.reply_text(
+            await update.message.reply_text(
                 text=text,
-                parse_mode=telegram.ParseMode.HTML,
+                parse_mode=ParseMode.HTML,
                 reply_markup=markup,
             )
         except telegram.error.BadRequest as e:
-            update.message.reply_text(
+            await update.message.reply_text(
                 text=error_with_html.format(reason=e),
-                parse_mode=telegram.ParseMode.HTML,
+                parse_mode=ParseMode.HTML,
             )
 
 
-def broadcast_decision_handler(update: Update, context: CallbackContext) -> None:
+async def broadcast_decision_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # callback_data: CONFIRM_DECLINE_BROADCAST variable from manage_data.py
     """ Entered /broadcast <some_text>.
         Shows text in HTML style with two buttons:
@@ -75,13 +74,13 @@ def broadcast_decision_handler(update: Update, context: CallbackContext) -> None
                 entities=entities_for_celery,
             )
     else:
-        context.bot.send_message(
+        await context.bot.send_message(
             chat_id=update.callback_query.message.chat_id,
             text=declined_message_broadcasting,
         )
         admin_text = text
 
-    context.bot.edit_message_text(
+    await context.bot.edit_message_text(
         text=admin_text,
         chat_id=update.callback_query.message.chat_id,
         message_id=update.callback_query.message.message_id,
